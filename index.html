@@ -46,23 +46,32 @@
 
       }
 
-      // Change this value to choose the password shown by the dialog.
-      const GAME_PASSWORD = "playsolara";
+      // Set to an empty string to skip the password screen.
+      const GAME_PASSWORD = "";
+      const passwordScreen = document.getElementById("password-screen");
+      const gameCanvas = document.querySelector("#unity-canvas");
 
-      document.getElementById("password-card").addEventListener("submit", (event) => {
-        event.preventDefault();
-        const input = document.getElementById("game-password");
-        if (input.value !== GAME_PASSWORD) {
-          document.getElementById("password-error").textContent = "That password is incorrect.";
-          input.select();
-          return;
-        }
+      function unlockAndStart() {
+        passwordScreen.remove();
+        gameCanvas.style.display = "block";
+        startGame(gameCanvas);
+      }
 
-        document.getElementById("password-screen").remove();
-        const canvas = document.querySelector("#unity-canvas");
-        canvas.style.display = "block";
-        startGame(canvas);
-      });
+      if (typeof GAME_PASSWORD === "string" && GAME_PASSWORD.length > 0) {
+        document.getElementById("password-card").addEventListener("submit", (event) => {
+          event.preventDefault();
+          const input = document.getElementById("game-password");
+          if (input.value !== GAME_PASSWORD) {
+            document.getElementById("password-error").textContent = "That password is incorrect.";
+            input.select();
+            return;
+          }
+
+          unlockAndStart();
+        });
+      } else {
+        unlockAndStart();
+      }
 
       function startGame(canvas) {
         createUnityInstance(canvas, {
