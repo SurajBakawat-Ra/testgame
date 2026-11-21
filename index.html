@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Rocket Arena</title>
+    <title>Rocket Autos</title>
     <style>
       html, body { width: 100%; height: 100%; overflow: hidden; }
       body { text-align: center; padding: 0; border: 0; margin: 0; background: #10151c; color: #f4f6f8; font-family: Arial, sans-serif; }
@@ -20,7 +20,7 @@
   <body>
     <main id="password-screen">
       <form id="password-card">
-        <h1>Rocket Arena</h1>
+        <h1>Rocket Autos</h1>
         <p>Enter the password to play.</p>
         <input id="game-password" type="password" placeholder="Password" autocomplete="current-password" required autofocus>
         <button id="password-submit" type="submit">Continue</button>
@@ -47,7 +47,7 @@
       }
 
       // Change this value to choose the password shown by the dialog.
-      const GAME_PASSWORD = "rocketarena";
+      const GAME_PASSWORD = "playsolara";
 
       document.getElementById("password-card").addEventListener("submit", (event) => {
         event.preventDefault();
@@ -72,7 +72,7 @@
         codeUrl: "Build/Build.wasm.unityweb",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "DefaultCompany",
-        productName: "UnityApp",
+        productName: "Rocket Autos",
         productVersion: "0.1.0",
         // matchWebGLToCanvasSize: false, // Uncomment this to separately control WebGL canvas render size and DOM element size.
         // devicePixelRatio: 1, // Uncomment this to override low DPI rendering on high DPI displays.
