@@ -28,7 +28,7 @@
       </form>
     </main>
     <canvas id="unity-canvas" width=960 height=600 tabindex="-1" style="width: 960px; height: 600px; background: #231F20"></canvas>
-    <script src="Build/Build.loader.js"></script>
+    <script src="Build/WebBuild.loader.js"></script>
     <script>
       if (/iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
         // Mobile device style: fill the whole browser client area with the game canvas:
@@ -50,6 +50,11 @@
       const GAME_PASSWORD = "";
       const passwordScreen = document.getElementById("password-screen");
       const gameCanvas = document.querySelector("#unity-canvas");
+      const UNITY_DATA_PARTS = [
+        "Build/WebBuild.data.part001",
+        "Build/WebBuild.data.part002",
+        "Build/WebBuild.data.part003"
+      ];
 
       function unlockAndStart() {
         passwordScreen.remove();
@@ -73,12 +78,32 @@
         unlockAndStart();
       }
 
-      function startGame(canvas) {
+      async function assembleUnityData() {
+        const parts = [];
+        for (const path of UNITY_DATA_PARTS) {
+          const response = await fetch(path);
+          if (!response.ok) {
+            throw new Error(`Could not load ${path} (HTTP ${response.status}).`);
+          }
+          parts.push(await response.blob());
+        }
+        return URL.createObjectURL(new Blob(parts, { type: "application/octet-stream" }));
+      }
+
+      async function startGame(canvas) {
+        let dataUrl;
+        try {
+          dataUrl = await assembleUnityData();
+        } catch (message) {
+          alert(message);
+          return;
+        }
+
         createUnityInstance(canvas, {
         arguments: [],
-        dataUrl: "Build/Build.data.unityweb",
-        frameworkUrl: "Build/Build.framework.js.unityweb",
-        codeUrl: "Build/Build.wasm.unityweb",
+        dataUrl,
+        frameworkUrl: "Build/WebBuild.framework.js.unityweb",
+        codeUrl: "Build/WebBuild.wasm.unityweb",
         streamingAssetsUrl: "StreamingAssets",
         companyName: "DefaultCompany",
         productName: "Rocket Autos",
@@ -88,6 +113,8 @@
         }).then((unityInstance) => {
         }).catch((message) => {
           alert(message);
+        }).finally(() => {
+          URL.revokeObjectURL(dataUrl);
         });
       }
     </script>
