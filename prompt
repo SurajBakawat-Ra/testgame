@@ -1,0 +1,102 @@
+Modify this Unity WebGL project so it can be served from GitHub Pages without Git LFS, by splitting the oversized Unity data file into regular Git files and reassembling it in the browser before Unity starts.
+
+Follow these steps exactly. Do not change the game, redesign the page, add dependencies, choose another hosting provider, or commit/push anything.
+
+1. Inspect the repository and find:
+   - The HTML file used by GitHub Pages.
+   - Its Unity loader script and createUnityInstance(...) configuration.
+   - The actual dataUrl file referenced in that configuration.
+   - Any .gitattributes rules or Git LFS tracking that affect the Unity build files.
+
+2. Check the data file’s size. If it is 100 MiB or smaller, stop and report that splitting is unnecessary. If it is larger:
+   - Split that exact file into ordered binary chunks of 48 MiB each. Use filenames in the same directory, based on the original filename, with the suffixes .part001, .part002, .part003, etc.
+   - Use binary reads and writes; do not decode or transform the data.
+   - Compute SHA-256 for the original and for the chunks concatenated in filename order. Continue only if the hashes match.
+   - Preserve the original outside the published site/repository, or remove it only after the verified chunks can reconstruct it. Do not leave the original oversized file staged for Git.
+
+Use this Python logic, substituting the real source path and stem:
+
+    from pathlib import Path
+
+    source = Path("Build/REPLACE_WITH_REAL_DATA_FILENAME")
+    chunk_size = 48 * 1024 * 1024
+    with source.open("rb") as src:
+        index = 1
+        while True:
+            data = src.read(chunk_size)
+            if not data:
+                break
+            output = source.with_name(f"{source.stem}.part{index:03d}")
+            output.write_bytes(data)
+            index += 1
+
+3. In the existing HTML file, add a constant listing every chunk URL in exact order. Use paths relative to the HTML page, such as:
+
+    const UNITY_DATA_PARTS = [
+      "Build/REPLACE_WITH_REAL_DATA_STEM.part001",
+      "Build/REPLACE_WITH_REAL_DATA_STEM.part002"
+    ];
+
+   Add this exact assembly function:
+
+    async function assembleUnityData() {
+      const parts = [];
+      for (const path of UNITY_DATA_PARTS) {
+        const response = await fetch(path);
+        if (!response.ok) {
+          throw new Error(`Could not load ${path} (HTTP ${response.status}).`);
+        }
+        parts.push(await response.blob());
+      }
+      return URL.createObjectURL(
+        new Blob(parts, { type: "application/octet-stream" })
+      );
+    }
+
+4. Declare UNITY_DATA_PARTS before any code can call unlockAndStart() or startGame(). In particular, do not put the const declaration after an immediate startup call; that causes a JavaScript initialization-order error.
+
+5. Adapt the existing startGame(canvas) function with this exact behavior:
+   - Make it async.
+   - Before calling createUnityInstance, call assembleUnityData().
+   - If assembly fails, alert the error and return.
+   - In the existing Unity configuration, replace only dataUrl’s string path with the assembled URL variable. Keep the current loader, frameworkUrl, codeUrl, streamingAssetsUrl, companyName, productName, productVersion, password behavior, and all other project-specific settings unchanged.
+   - Keep the existing createUnityInstance error handling.
+   - After createUnityInstance’s promise settles, call URL.revokeObjectURL(dataUrl) in finally.
+
+   The essential shape is:
+
+    async function startGame(canvas) {
+      let dataUrl;
+      try {
+        dataUrl = await assembleUnityData();
+      } catch (error) {
+        alert(error);
+        return;
+      }
+
+      createUnityInstance(canvas, {
+        // Preserve the project's existing settings.
+        dataUrl,
+        // Preserve frameworkUrl, codeUrl, and all other settings.
+      })
+        .catch((error) => {
+          alert(error);
+        })
+        .finally(() => {
+          URL.revokeObjectURL(dataUrl);
+        });
+    }
+
+   Do not copy this abbreviated config over the project’s real config. Merge only the shown dataUrl and async behavior into the existing code.
+
+6. Make sure the Unity loader, framework, WASM, and every other published Unity asset are real files, not Git LFS pointer files. Do not configure the chunks for LFS. Do not rewrite existing Git history automatically. If another required published asset is over GitHub’s 100 MiB regular-file limit or is already only an LFS pointer, stop and report that specific blocker instead of changing hosting or inventing another workaround.
+
+7. Verify:
+   - All generated chunks are each below 50 MiB.
+   - Their ordered concatenation has the same SHA-256 as the original.
+   - The HTML references every generated chunk exactly once and in order.
+   - The dataUrl passed to Unity is the Blob URL returned by assembleUnityData().
+   - No oversized original data file will be included if the user stages all project changes.
+   - If a local web server is already available, check that the page and each chunk return HTTP 200. Do not claim the game was browser-tested unless you actually opened it and observed it load.
+
+Do not commit or push. Finish by reporting the changed files, chunk sizes, hash verification result, and any remaining blocker.
